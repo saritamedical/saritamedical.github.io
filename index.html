@@ -318,6 +318,7 @@
         let medicines = [];
         let rawFetchData = ""; 
 
+        // ----- ONLY THIS FUNCTION WAS MODIFIED -----
         async function fetchProductsFromSheet() {
             const grid = document.getElementById('grid');
             const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv`;
@@ -337,6 +338,7 @@
                 medicines = [];
                 let idCounter = 1;
 
+                // Loop starts at 1 to skip header row
                 for (let i = 1; i < rows.length; i++) {
                     
                     const cols = [];
@@ -348,25 +350,27 @@
                     }
                     cols.push(curr.trim());
                     
-                    if (cols.length >= 6) {
+                    // Maps exactly to: Name(0), Category(1), Size(2), MRP(3), Discount%(4), SalePrice(5), Stock(6), ImageURL(7), Brand(8), Desc(9)
+                    if (cols.length >= 7) { // Need at least up to Stock to be valid
                         const name = cols[0];
                         const cat = cols[1];
                         const label = cols[2] || "Standard";
                         const mrp = parseFloat(cols[3]) || 0;
-                        const offer = parseFloat(cols[4]) || 0;
-                        const stock = parseInt(cols[5]) || 0;
                         
-                        const imgRaw = cols[6] ? cols[6] : "";
+                        // We skip cols[4] (Discount %) because we only need the final sale price
+                        const offer = parseFloat(cols[5]) || parseFloat(cols[3]) || 0; // If sale price empty, use MRP
+                        
+                        const stock = parseInt(cols[6]) || 0;
+                        
+                        const imgRaw = cols[7] ? cols[7] : "";
                         const imagesList = imgRaw ? imgRaw.split(',').map(s => s.trim()) : [DEFAULT_PLACEHOLDER_IMG];
-                        const brand = cols[7] ? cols[7].trim() : "General Medicine";
                         
-                        // NEW: Pulls the description from Column I (Index 8)
-                        const desc = cols[8] ? cols[8].trim() : "Genuine healthcare product. Please verify the strip/bottle packaging and expiry date before use. Store in a cool, dry place.";
+                        const brand = cols[8] ? cols[8].trim() : "General Medicine";
+                        const desc = cols[9] ? cols[9].trim() : "Genuine healthcare product. Please verify the strip/bottle packaging and expiry date before use. Store in a cool, dry place.";
 
                         if (name && offer) {
                             const existingProduct = medicines.find(m => m.name.toLowerCase() === name.toLowerCase());
                             if (existingProduct) {
-                                // NEW: Saves the unique images for this specific size
                                 existingProduct.variants.push({ label: label, mrp: mrp, offer: offer, stock: stock, images: imagesList });
                             } else {
                                 medicines.push({
@@ -378,7 +382,7 @@
                                     stock: stock,
                                     images: imagesList,
                                     brand: brand,
-                                    desc: desc, // NEW: Saved to the product
+                                    desc: desc,
                                     variants: [{ label: label, mrp: mrp, offer: offer, stock: stock, images: imagesList }]
                                 });
                             }
@@ -392,6 +396,7 @@
                 return false; 
             }
         }
+        // ---------------------------------------------
 
         async function init() { 
             renderCategories(); 
@@ -558,7 +563,6 @@
             document.getElementById('modal-name').innerText = m.name;
             document.getElementById('modal-cat').innerText = m.cat;
             
-            // NEW: Applies the description to the modal window!
             document.getElementById('modal-desc').innerText = m.desc;
             
             updateModalGallery(); 
@@ -580,9 +584,9 @@
 
         function selectVariant(idx) { 
             activeVariantIndex = idx; 
-            currentImgIndex = 0; // NEW: Resets to 1st image when size changes
+            currentImgIndex = 0; 
             renderVariantButtons(); 
-            updateModalGallery(); // NEW: Instantly swaps the image based on size
+            updateModalGallery(); 
         }
 
         function updateModalPrice() {
@@ -621,7 +625,6 @@
         function updateModalGallery() {
             if(!currentModalProduct) return;
             
-            // NEW: Safely get the images for the currently selected size
             const variantImages = currentModalProduct.variants[activeVariantIndex].images;
             if (currentImgIndex >= variantImages.length) currentImgIndex = 0;
             
