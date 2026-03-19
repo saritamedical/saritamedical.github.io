@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#047857">
+    <title>Sarita Medical Hall | Pro Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; scroll-behavior: smooth; }
+        
+        .product-card { background: white; border-radius: 12px; border: 1px solid #e5e7eb; transition: all 0.3s ease; display: flex; flex-direction: column; overflow: hidden; cursor: pointer; position: relative; }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        
+        .sidebar-link.active { background-color: #10b981; color: white; font-weight: 600; }
+        .thumb-active { border: 2px solid #10b981 !important; }
+
+        #toast { transform: translateY(100px); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); visibility: hidden; opacity: 0; }
+        #toast.show { transform: translateY(0); visibility: visible; opacity: 1; }
+
+        @keyframes shake {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .cart-animate { animation: shake 0.3s ease-in-out; }
+
+        .marquee-container { background: #064e3b; color: white; padding: 6px 0; overflow: hidden; white-space: nowrap; font-size: 12px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .marquee-content { display: inline-block; animation: scroll-left 25s linear infinite; padding-left: 100%; }
+        @keyframes scroll-left { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+
+        .nav-btn { opacity: 0; transition: opacity 0.3s; }
+        .aspect-square:hover .nav-btn { opacity: 1; }
+
+        .seasonal-banner { background: linear-gradient(90deg, #be123c 0%, #fb7185 100%); color: white; padding: 8px 15px; text-align: center; font-size: 13px; font-weight: 700; position: relative; z-index: 90; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .seasonal-banner a { background: white; color: #be123c; padding: 2px 10px; border-radius: 99px; text-decoration: none; margin-left: 5px; transition: all 0.2s; }
+        .seasonal-banner a:hover { opacity: 0.9; transform: scale(1.05); }
+        .close-seasonal { position: absolute; right: 5px; padding: 5px 10px; cursor: pointer; font-size: 18px; opacity: 0.7; }
+        .close-seasonal:hover { opacity: 1; }
+
+        .variant-row { display: flex; gap: 8px; margin-bottom: 8px; }
+
+        .variant-btn { padding: 8px 16px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 12px; font-weight: 700; color: #4b5563; background-color: white; cursor: pointer; transition: all 0.2s ease; }
+        .variant-btn:hover { border-color: #10b981; color: #047857; }
+        .variant-btn.selected { border-color: #047857; background-color: #ecfdf5; color: #047857; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #10b981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 40px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-gray-800 pb-24 md:pb-12">
+
+    <div class="seasonal-banner" id="promo-banner">
+        <span><i class="fas fa-gift mr-2"></i> SEASONAL HEALTH SALE: Use Code <b>HEALTH15</b> for Extra 15% OFF! </span>
+        <a href="javascript:void(0)" onclick="setCat('Vitamins')">ACTIVATE OFFER</a>
+        <span class="close-seasonal" onclick="document.getElementById('promo-banner').style.display='none'">&times;</span>
+    </div>
+
+    <div class="marquee-container">
+        <div class="marquee-content">
+            <i class="fas fa-bullhorn mr-2"></i> Welcome to Sarita Medical Hall: Get 10% Discount on First Order! <span class="mx-10">|</span> 
+            <i class="fas fa-truck mr-2"></i> Free Home Delivery on orders above ₹500 <span class="mx-10">|</span> 
+            <i class="fas fa-clock mr-2"></i> Open 24/7 for Emergency Medicines <span class="mx-10">|</span> 
+            <i class="fas fa-phone-alt mr-2"></i> Call for Support: +91 8210616210
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-[500] pointer-events-none transition-all duration-300">
+        <div class="bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3">
+            <div class="bg-emerald-500 rounded-full p-1"><i class="fas fa-check text-xs"></i></div>
+            <span id="toast-msg" class="text-sm font-medium"></span>
+        </div>
+    </div>
+
+    <header class="bg-emerald-700 text-white sticky top-0 z-[100] shadow-md">
+        <div class="container mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('home')">
+                <div class="bg-white p-2 rounded-full">
+                    <i class="fas fa-plus-medical text-emerald-700 text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold leading-none">Sarita Medical Hall</h1>
+                    <p class="text-xs opacity-80 uppercase tracking-widest">Quality Healthcare Since 1995</p>
+                </div>
+            </div>
+
+            <div class="w-full md:w-1/3 my-3 md:my-0 relative">
+                <input type="text" id="search" onkeyup="render()" placeholder="Search medicines..." 
+                    class="w-full py-2 px-4 pr-10 rounded-full text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 border-none shadow-inner">
+                <i class="fas fa-search absolute right-4 top-3 text-gray-400"></i>
+            </div>
+
+            <nav class="hidden md:flex items-center gap-6 font-medium">
+                <button onclick="navigate('home')" class="hover:text-emerald-200 transition">Home</button>
+                <button onclick="navigate('about')" class="hover:text-emerald-200 transition">About</button>
+                <button onclick="navigate('contact')" class="hover:text-emerald-200 transition">Contact</button>
+                
+                <button id="cart-btn" onclick="toggleCart()" class="relative hover:text-emerald-200 transition">
+                    <i class="fas fa-shopping-cart text-xl"></i>
+                    <span id="cart-count" class="absolute -top-2 -right-2 bg-rose-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-emerald-700">0</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <div id="main-wrapper" class="container mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8">
+        <aside class="hidden lg:block w-64 flex-shrink-0">
+            <div class="sticky top-24 space-y-6">
+                <div>
+                    <h3 class="text-sm font-black text-emerald-700 uppercase tracking-widest mb-4 ml-2 flex items-center gap-2"><i class="fas fa-layer-group opacity-80"></i> Categories</h3>
+                    <nav id="side-nav" class="flex flex-col gap-2"></nav>
+                </div>
+                <div class="p-5 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-800">
+                    <i class="fas fa-phone-alt mb-2"></i>
+                    <p class="text-[10px] font-bold opacity-80 uppercase tracking-wider">Emergency Call</p>
+                    <p class="text-lg font-black tracking-tighter">+91 8210616210</p>
+                </div>
+            </div>
+        </aside>
+
+        <main id="main-content" class="flex-1">
+            <div class="lg:hidden mb-6">
+                <h3 class="text-xs font-black text-emerald-700 uppercase tracking-widest mb-3 px-1 flex items-center gap-2"><i class="fas fa-layer-group opacity-80"></i> Categories</h3>
+                <nav id="mobile-side-nav" class="flex gap-2 overflow-x-auto pb-2 no-scrollbar"></nav>
+            </div>
+            
+            <div id="grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div class="col-span-full flex flex-col items-center justify-center py-12 text-emerald-700">
+                    <div class="loader"></div>
+                    <p class="font-bold mt-4">Loading fresh inventory from cloud...</p>
+                </div>
+            </div>
+            <div id="pagination-controls" class="flex justify-center items-center gap-4 mt-10 mb-4"></div>
+        </main>
+    </div>
+
+    <button id="back-to-top" onclick="scrollToTop()" class="hidden fixed bottom-24 md:bottom-10 right-6 z-[90] bg-emerald-600 text-white w-12 h-12 rounded-full items-center justify-center shadow-2xl hover:bg-emerald-700 transition-all">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[100] px-6 py-3 flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <button onclick="navigate('home')" class="flex flex-col items-center gap-1 text-emerald-700">
+            <i class="fas fa-home text-xl"></i>
+            <span class="text-[10px] font-bold">Home</span>
+        </button>
+        <button onclick="window.open('https://wa.me/918210616210')" class="flex flex-col items-center gap-1 text-gray-500 hover:text-emerald-700 transition">
+            <i class="fab fa-whatsapp text-xl"></i>
+            <span class="text-[10px] font-bold">Support</span>
+        </button>
+        <button onclick="toggleCart()" class="flex flex-col items-center gap-1 text-gray-500 hover:text-emerald-700 transition relative">
+            <i class="fas fa-shopping-cart text-xl"></i>
+            <span class="text-[10px] font-bold">Cart</span>
+            <span id="mobile-cart-count" class="absolute -top-1 -right-2 bg-rose-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">0</span>
+        </button>
+    </nav>
+
+    <div id="product-modal" class="fixed inset-0 z-[300] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeModal()"></div>
+        
+        <button onclick="closeModal()" class="hidden md:flex absolute top-4 right-4 z-[500] bg-white text-rose-600 rounded-full w-12 h-12 items-center justify-center text-3xl font-black shadow-2xl border-2 border-rose-100 hover:bg-rose-50 transition">&times;</button>
+
+        <div class="relative bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto no-scrollbar rounded-3xl shadow-2xl flex flex-col md:flex-row mt-8">
+            <div class="w-full md:w-1/2 p-6 bg-gray-50 flex flex-col gap-4">
+                <div class="aspect-square bg-white rounded-xl flex items-center justify-center border overflow-hidden relative group">
+                    <button onclick="prevImg()" class="nav-btn absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-md z-20 text-emerald-700">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button onclick="nextImg()" class="nav-btn absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-md z-20 text-emerald-700">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <img id="modal-main-img" src="" class="max-h-full object-contain p-4">
+                    <span id="modal-disc-badge" class="absolute top-4 left-4 bg-rose-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg"></span>
+                </div>
+                <div id="modal-thumbs" class="flex gap-2 overflow-x-auto pb-2"></div>
+            </div>
+            <div class="w-full md:w-1/2 p-8 flex flex-col">
+                <div class="flex justify-between items-start pr-8">
+                    <span id="modal-cat" class="text-emerald-600 font-bold text-xs uppercase tracking-widest"></span>
+                    <button id="modal-share-btn" class="text-emerald-600 hover:text-emerald-800 flex items-center gap-1 text-xs font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                        <i class="fas fa-share-alt"></i> SHARE
+                    </button>
+                </div>
+                <h2 id="modal-name" class="text-2xl font-black mt-2 mb-2 text-gray-800"></h2>
+                
+                <div id="variant-selector-container" class="mb-4">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase mb-2">Select Available Size</p>
+                    <div id="modal-variant-btns" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <div class="flex items-center gap-3 mb-4">
+                    <span id="modal-price" class="text-3xl font-bold text-gray-900"></span>
+                    <span id="modal-mrp" class="text-lg text-gray-400 line-through"></span>
+                </div>
+                <p class="text-gray-500 text-sm mb-6 leading-relaxed">Genuine healthcare product. Please verify the strip/bottle packaging and expiry date before use. Store in a cool, dry place.</p>
+                <div class="grid grid-cols-2 gap-3 mt-auto">
+                    <button id="modal-buy-btn" class="bg-white border-2 border-emerald-600 text-emerald-700 py-3 rounded-xl font-bold hover:bg-emerald-50 transition">BUY NOW</button>
+                    <button id="modal-add-btn" class="bg-emerald-700 text-white py-3 rounded-xl font-bold hover:bg-emerald-800 transition shadow-lg">ADD TO CART</button>
+                </div>
+                
+                <button onclick="closeModal()" class="w-full bg-gray-100 text-gray-700 border border-gray-300 py-3 rounded-xl font-bold hover:bg-gray-200 transition mt-3 flex items-center justify-center gap-2">
+                    <i class="fas fa-arrow-left"></i> GO BACK
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cart-modal" class="fixed inset-0 z-[400] hidden">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="toggleCart()"></div>
+        <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white p-6 shadow-2xl flex flex-col">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Shopping Cart</h2>
+                <button onclick="toggleCart()" class="text-3xl text-gray-400 hover:text-rose-500 w-12 h-12 flex items-center justify-center bg-gray-50 rounded-full hover:bg-gray-100 transition">&times;</button>
+            </div>
+            <div id="cart-items" class="flex-1 overflow-y-auto space-y-4"></div>
+            
+            <div class="mt-4 p-4 bg-gray-50 rounded-xl border border-dashed border-emerald-300">
+                <p class="text-[10px] font-bold text-gray-400 uppercase mb-2">Have a Coupon?</p>
+                <div class="flex gap-2">
+                    <input type="text" id="coupon-input" placeholder="Enter Code (e.g. HEALTH15)" class="flex-1 p-2 text-sm border rounded-lg focus:outline-emerald-500 uppercase">
+                    <button onclick="applyCoupon()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-700 transition">APPLY</button>
+                </div>
+                <p id="coupon-status" class="text-[10px] mt-1 font-medium"></p>
+            </div>
+
+            <div class="border-t pt-4 mt-4 space-y-2">
+                <div class="flex justify-between text-gray-500 text-sm"><span>Subtotal:</span><span id="subtotal">₹0</span></div>
+                <div class="flex justify-between text-rose-500 text-sm font-medium"><span>Discount:</span><span id="discount-amt">- ₹0</span></div>
+                <div class="flex justify-between text-xl font-bold mb-6 pt-2 border-t"><span>Final Total:</span><span id="total" class="text-emerald-700">₹0</span></div>
+                <button onclick="whatsapp()" class="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-emerald-700 transition">
+                    <i class="fab fa-whatsapp text-2xl"></i> ORDER ON WHATSAPP
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-gray-900 text-gray-300 pt-12 pb-24 md:pb-6 mt-12 hidden md:block">
+        <div class="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8 mb-8 border-b border-gray-800 pb-8">
+            <div>
+                <h4 class="text-white font-bold text-lg mb-4">Sarita Medical Hall</h4>
+                <p class="text-sm">Trusted healthcare partner providing genuine medicines and healthcare products for over 25 years in your city.</p>
+            </div>
+            <div>
+                <h4 class="text-white font-bold text-lg mb-4">Quick Links</h4>
+                <ul class="space-y-2 text-sm">
+                    <li><button onclick="navigate('home')" class="hover:text-emerald-400 transition text-left w-full">Browse Medicines</button></li>
+                    <li><button onclick="navigate('about')" class="hover:text-emerald-400 transition text-left w-full">Our History</button></li>
+                    <li><button onclick="navigate('contact')" class="hover:text-emerald-400 transition text-left w-full">Store Locator</button></li>
+                    <li><button onclick="navigate('support')" class="hover:text-emerald-400 transition text-left w-full">Order Tracking</button></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-bold text-lg mb-4">Support</h4>
+                <ul class="space-y-2 text-sm">
+                    <li><a href="#" class="hover:text-emerald-400">Privacy Policy</a></li>
+                    <li><a href="#" class="hover:text-emerald-400">Return Policy</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-bold text-lg mb-4">Connect</h4>
+                <p class="text-sm mb-4">Visit us at: Main Market Road, Opp. Civil Hospital.</p>
+                <div class="flex gap-4">
+                    <i class="fab fa-facebook text-xl cursor-pointer hover:text-emerald-500"></i>
+                    <i class="fab fa-instagram text-xl cursor-pointer hover:text-emerald-500"></i>
+                </div>
+            </div>
+        </div>
+        <div class="container mx-auto px-4 text-center text-xs opacity-60">
+            <p>&copy; 2024 Sarita Medical Hall. All Rights Reserved. | Designed for Quality.</p>
+        </div>
+    </footer>
+
+    <script>
+        // YOUR ID IS ALREADY HERE:
+        const SPREADSHEET_ID = '1rHLXM1Ttfli9IWSfuQiURU_7yol6dM769ww17Pu2Zq8'; 
+        
+        const STORE_WA = "918210616210";
+        let currentCat = sessionStorage.getItem('currentCat') || 'All';
+        let currentPage = parseInt(sessionStorage.getItem('currentPage')) || 1;
+        const itemsPerPage = 20;
+
+        let cart = JSON.parse(localStorage.getItem('sarita_v12_cart')) || [];
+        let currentModalProduct = null;
+        let currentImgIndex = 0;
+        let activeVariantIndex = 0; 
+        
+        let appliedCoupon = { code: "", discount: 0 }; 
+        const VALID_COUPONS = { "HEALTH15": 0.15, "FIRST10": 0.10, "SARITA5": 0.05 };
+
+        const categoryData = [
+            { name: 'All', icon: 'fa-border-all' },
+            { name: 'Featured', icon: 'fa-star' },
+            { name: 'Pain Relief', icon: 'fa-pills' },
+            { name: 'Vitamins', icon: 'fa-capsules' },
+            { name: 'Baby Care', icon: 'fa-baby' },
+            { name: 'First Aid', icon: 'fa-kit-medical' },
+            { name: 'Skincare', icon: 'fa-pump-medical' }
+        ];
+
+        const DEFAULT_PLACEHOLDER_IMG = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+            <svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+                <rect width="800" height="800" fill="#f8fafc"/>
+                <rect x="100" y="100" width="600" height="600" rx="40" fill="#047857"/>
+                <path d="M360 220 h80 v80 h80 v80 h-80 v80 h-80 v-80 h-80 v-80 h80 z" fill="#10b981" opacity="0.4"/>
+                <text x="400" y="450" font-family="Arial, sans-serif" font-size="46" font-weight="bold" fill="#ffffff" text-anchor="middle">Sarita Medical Hall</text>
+                <text x="400" y="520" font-family="Arial, sans-serif" font-size="26" font-weight="bold" fill="#a7f3d0" text-anchor="middle">IMAGE COMING SOON</text>
+            </svg>
+        `);
+
+        let medicines = [];
+        let rawFetchData = ""; // Used for debugging if it fails
+
+        // --- FULLY RE-WRITTEN SAFE PARSER ---
+        async function fetchProductsFromSheet() {
+            const grid = document.getElementById('grid');
+            const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv`;
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Network block or bad connection");
+                
+                const csvText = await response.text();
+                rawFetchData = csvText.substring(0, 150); // Save a preview just in case
+                
+                if (csvText.toLowerCase().includes('html') || csvText.toLowerCase().includes('sign in')) {
+                    throw new Error("Google Sheet is restricted.");
+                }
+
+                // Super-safe way to split rows (works on all mobile phones)
+                const rows = csvText.split(/\r?\n/).filter(row => row.trim() !== "");
+                medicines = [];
+                let idCounter = 1;
+
+                // Loop through rows, skipping the header (i=1)
+                for (let i = 1; i < rows.length; i++) {
+                    
+                    // Super-safe way to split columns
+                    const cols = [];
+                    let curr = '', inQuotes = false;
+                    for (let char of rows[i]) {
+                        if (char === '"') inQuotes = !inQuotes;
+                        else if (char === ',' && !inQuotes) { cols.push(curr.trim()); curr = ''; }
+                        else curr += char;
+                    }
+                    cols.push(curr.trim());
+                    
+                    if (cols.length >= 6) {
+                        const name = cols[0];
+                        const cat = cols[1];
+                        const label = cols[2] || "Standard";
+                        const mrp = parseFloat(cols[3]) || 0;
+                        const offer = parseFloat(cols[4]) || 0;
+                        const stock = parseInt(cols[5]) || 0;
+                        const imgUrl = (cols[6] && cols[6] !== "") ? cols[6] : DEFAULT_PLACEHOLDER_IMG;
+
+                        if (name && offer) {
+                            const existingProduct = medicines.find(m => m.name.toLowerCase() === name.toLowerCase());
+                            if (existingProduct) {
+                                existingProduct.variants.push({ label: label, mrp: mrp, offer: offer, stock: stock });
+                            } else {
+                                medicines.push({
+                                    id: idCounter++,
+                                    name: name,
+                                    mrp: mrp, 
+                                    offer: offer, 
+                                    cat: cat, 
+                                    stock: stock,
+                                    images: [imgUrl],
+                                    variants: [{ label: label, mrp: mrp, offer: offer, stock: stock }]
+                                });
+                            }
+                        }
+                    }
+                }
+                return true; 
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                grid.innerHTML = `<div class="col-span-full p-8 text-center bg-rose-50 rounded-xl text-rose-600 font-bold border-2 border-rose-200">Could not load products. Ensure the sheet is public.</div>`;
+                return false; 
+            }
+        }
+
+        async function init() { 
+            renderCategories(); 
+            
+            const success = await fetchProductsFromSheet();
+            if (success) {
+                render(); 
+            }
+            
+            updateUI();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const itemId = urlParams.get('item');
+            if(itemId) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+                setTimeout(() => openModal(parseInt(itemId)), 500); 
+            }
+        }
+
+        window.onscroll = function() {
+            const btn = document.getElementById('back-to-top');
+            if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+                btn.classList.remove('hidden');
+                btn.classList.add('flex');
+            } else {
+                btn.classList.add('hidden');
+                btn.classList.remove('flex');
+            }
+        };
+
+        function scrollToTop() { window.scrollTo({top: 0, behavior: 'smooth'}); }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        function renderCategories() {
+            const nav = document.getElementById('side-nav');
+            const mobileNav = document.getElementById('mobile-side-nav');
+            
+            const htmlContent = categoryData.map(c => `
+                <button onclick="setCat('${c.name}')" class="sidebar-link flex-shrink-0 flex items-center gap-3 px-4 py-2 md:py-3 rounded-full md:rounded-lg text-sm transition-all ${currentCat === c.name ? 'active bg-emerald-600 text-white border-emerald-600 shadow-md' : 'text-gray-600 bg-white border border-gray-200 md:border-transparent hover:bg-gray-100'}">
+                    <i class="fas ${c.icon} w-4 md:w-5 text-center ${currentCat === c.name ? 'text-white' : 'text-gray-400'}"></i><span>${c.name}</span>
+                </button>
+            `).join('');
+
+            if(nav) nav.innerHTML = htmlContent;
+            if(mobileNav) mobileNav.innerHTML = htmlContent;
+        }
+
+        function setCat(cat) { 
+            currentCat = cat; 
+            sessionStorage.setItem('currentCat', cat);
+            currentPage = 1; 
+            sessionStorage.setItem('currentPage', currentPage);
+            
+            if (!document.getElementById('grid')) { navigate('home'); } 
+            else { renderCategories(); render(); }
+        }
+
+        function changePage(dir) {
+            currentPage += dir;
+            sessionStorage.setItem('currentPage', currentPage);
+            render();
+            window.scrollTo({ top: document.getElementById('main-content').offsetTop - 50, behavior: 'smooth' });
+        }
+
+        function render() {
+            const grid = document.getElementById('grid');
+            if(!grid) return;
+            const query = document.getElementById('search').value.toLowerCase();
+            
+            if (query !== (sessionStorage.getItem('lastQuery') || '')) {
+                currentPage = 1;
+                sessionStorage.setItem('currentPage', 1);
+                sessionStorage.setItem('lastQuery', query);
+            }
+
+            const filtered = medicines.filter(m => (currentCat === 'All' || m.cat === currentCat) && m.name.toLowerCase().includes(query));
+
+            // THE NEW DEBUG MESSAGE: If it fails, it will show us the text it fetched!
+            if (filtered.length === 0 && medicines.length === 0) {
+                 grid.innerHTML = `
+                 <div class="col-span-full p-8 text-center text-gray-500 font-bold border-2 border-gray-200 rounded-xl">
+                    <p class="mb-4">No products loaded.</p>
+                    <p class="text-xs font-normal text-rose-500 break-all bg-rose-50 p-2 rounded text-left">
+                        <b>Debug Info (Send to dev):</b><br>${rawFetchData || "Nothing fetched"}
+                    </p>
+                 </div>`;
+                 document.getElementById('pagination-controls').innerHTML = '';
+                 return;
+            } else if (filtered.length === 0) {
+                 grid.innerHTML = `<div class="col-span-full p-8 text-center text-gray-500 font-bold">No products match your search.</div>`;
+                 document.getElementById('pagination-controls').innerHTML = '';
+                 return;
+            }
+
+            const totalPages = Math.ceil(filtered.length / itemsPerPage);
+            if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
+
+            grid.innerHTML = paginated.map(m => {
+                const displayMRP = m.variants && m.variants.length > 0 ? m.variants[0].mrp : m.mrp;
+                const displayOffer = m.variants && m.variants.length > 0 ? m.variants[0].offer : m.offer;
+                const totalStock = m.variants && m.variants.length > 0 ? m.variants.reduce((acc, v) => acc + parseInt(v.stock), 0) : m.stock;
+
+                const discount = displayMRP > displayOffer ? Math.round(((displayMRP - displayOffer) / displayMRP) * 100) : 0;
+                const outOfStock = totalStock <= 0;
+                
+                return `
+                <div class="product-card" onclick="openModal(${m.id})">
+                    <div class="h-44 p-4 flex items-center justify-center bg-white relative">
+                        <img src="${m.images[0]}" class="max-h-full object-contain">
+                        ${discount > 0 ? `<span class="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md">${discount}% OFF</span>` : ''}
+                        ${outOfStock ? `<div class="absolute inset-0 bg-white/60 flex items-center justify-center"><span class="bg-black text-white text-[10px] font-bold px-3 py-1 rounded">SOLD OUT</span></div>` : ''}
+                    </div>
+                    <div class="p-4 flex-1 flex flex-col">
+                        <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">${m.cat}</span>
+                        <h4 class="font-bold text-sm text-gray-800 line-clamp-2 h-10 mb-2">${m.name}</h4>
+                        <div class="flex items-center justify-between mb-4 mt-auto">
+                            <div>
+                                <span class="text-lg font-bold text-gray-900">₹${displayOffer}</span> 
+                                <span class="text-xs text-gray-400 line-through ml-1">₹${displayMRP}</span>
+                            </div>
+                        </div>
+                        <button onclick="event.stopPropagation(); openModal(${m.id})" 
+                                class="w-full ${outOfStock ? 'bg-gray-400' : 'bg-emerald-700 hover:bg-emerald-800'} text-white py-2 rounded-lg text-xs font-bold transition active:scale-95">
+                            ${outOfStock ? 'OUT OF STOCK' : (m.variants && m.variants.length > 1 ? 'SELECT SIZE' : 'ADD TO CART')}
+                        </button>
+                    </div>
+                </div>
+                `}).join('');
+
+            const pageControls = document.getElementById('pagination-controls');
+            if (pageControls) {
+                if (totalPages > 1) {
+                    pageControls.innerHTML = `
+                        <button onclick="changePage(-1)" class="px-4 py-2 ${currentPage === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'} rounded-lg text-sm font-bold transition shadow-sm" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left mr-1"></i> Prev</button>
+                        <span class="text-sm font-bold text-gray-600 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100">${currentPage} / ${totalPages}</span>
+                        <button onclick="changePage(1)" class="px-4 py-2 ${currentPage === totalPages ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'} rounded-lg text-sm font-bold transition shadow-sm" ${currentPage === totalPages ? 'disabled' : ''}>Next <i class="fas fa-chevron-right ml-1"></i></button>
+                    `;
+                } else {
+                    pageControls.innerHTML = '';
+                }
+            }
+        }
+
+        function openModal(id) {
+            const m = medicines.find(item => item.id === id);
+            if(!m) return;
+            
+            currentModalProduct = m; 
+            currentImgIndex = 0;    
+            activeVariantIndex = 0; 
+            
+            const selectorContainer = document.getElementById('variant-selector-container');
+            if (m.variants && m.variants.length > 0) {
+                selectorContainer.style.display = 'block';
+                renderVariantButtons();
+            } else {
+                selectorContainer.style.display = 'none';
+                updateModalPrice();
+            }
+            
+            document.getElementById('modal-name').innerText = m.name;
+            document.getElementById('modal-cat').innerText = m.cat;
+            
+            updateModalGallery(); 
+            
+            document.getElementById('modal-buy-btn').onclick = () => buyNow(currentModalProduct);
+            document.getElementById('modal-share-btn').onclick = () => shareProduct(m);
+            document.getElementById('product-modal').classList.remove('hidden');
+        }
+
+        function renderVariantButtons() {
+            const container = document.getElementById('modal-variant-btns');
+            container.innerHTML = currentModalProduct.variants.map((v, idx) => `
+                <button onclick="selectVariant(${idx})" class="variant-btn ${idx === activeVariantIndex ? 'selected' : ''}">
+                    ${v.label}
+                </button>
+            `).join('');
+            updateModalPrice();
+        }
+
+        function selectVariant(idx) { activeVariantIndex = idx; renderVariantButtons(); }
+
+        function updateModalPrice() {
+            if(!currentModalProduct) return;
+            
+            let price, mrp, stock;
+            if (currentModalProduct.variants && currentModalProduct.variants.length > 0) {
+                const v = currentModalProduct.variants[activeVariantIndex];
+                price = v.offer; mrp = v.mrp; stock = v.stock;
+            } else {
+                price = currentModalProduct.offer; mrp = currentModalProduct.mrp; stock = currentModalProduct.stock;
+            }
+
+            const discount = mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
+            document.getElementById('modal-price').innerText = '₹' + price;
+            document.getElementById('modal-mrp').innerText = '₹' + mrp;
+            
+            const badge = document.getElementById('modal-disc-badge');
+            if(discount > 0) { badge.innerText = `${discount}% DISCOUNT`; badge.style.display = 'block'; } else { badge.style.display = 'none'; }
+
+            const addBtn = document.getElementById('modal-add-btn');
+            if(stock <= 0) {
+                addBtn.innerText = "OUT OF STOCK"; addBtn.disabled = true; addBtn.className = "bg-gray-400 text-white py-4 rounded-xl font-bold cursor-not-allowed";
+            } else {
+                addBtn.innerText = "ADD TO CART"; addBtn.disabled = false; addBtn.className = "bg-emerald-700 text-white py-3 rounded-xl font-bold hover:bg-emerald-800 transition shadow-lg";
+                addBtn.onclick = () => { addToCart(currentModalProduct.id, activeVariantIndex); closeModal(); };
+            }
+        }
+
+        function shareProduct(item) {
+            const link = window.location.origin + window.location.pathname + "?item=" + item.id;
+            const text = `*Look what I found at Sarita Medical Hall!*%0A%0A*${item.name}*%0APrice: ₹${item.offer}%0A%0ABuy it here: ${link}`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+        }
+
+        function updateModalGallery() {
+            if(!currentModalProduct) return;
+            const imgUrl = currentModalProduct.images[currentImgIndex];
+            document.getElementById('modal-main-img').src = imgUrl;
+            
+            document.getElementById('modal-thumbs').innerHTML = currentModalProduct.images.map((img, idx) => `
+                <img src="${img}" onclick="event.stopPropagation(); setImg(${idx})" class="w-16 h-16 object-cover rounded-lg border-2 cursor-pointer hover:border-emerald-500 transition ${idx === currentImgIndex ? 'thumb-active' : ''}">
+            `).join('');
+        }
+
+        function nextImg() { if(!currentModalProduct) return; currentImgIndex = (currentImgIndex + 1) % currentModalProduct.images.length; updateModalGallery(); }
+        function prevImg() { if(!currentModalProduct) return; currentImgIndex = (currentImgIndex - 1 + currentModalProduct.images.length) % currentModalProduct.images.length; updateModalGallery(); }
+        function setImg(idx) { currentImgIndex = idx; updateModalGallery(); }
+        
+        function closeModal() { 
+            document.getElementById('product-modal').classList.add('hidden'); 
+            currentModalProduct = null; 
+            window.history.replaceState({}, document.title, window.location.pathname);
+            navigate('home'); 
+        }
+
+        function buyNow(item) {
+            let price = item.offer;
+            let size = "";
+            if (item.variants && item.variants.length > 0) {
+                const v = item.variants[activeVariantIndex];
+                price = v.offer; size = `(${v.label})`;
+            }
+            let msg = `*INSTANT ORDER*%0A• ${item.name} ${size}%0APrice: ₹${price}`;
+            window.open(`https://wa.me/${STORE_WA}?text=${msg}`);
+        }
+
+        function addToCart(id, variantIndex = null) {
+            const item = medicines.find(m => m.id === id);
+            let price = item.offer;
+            let label = "Standard";
+
+            if (variantIndex !== null && item.variants && item.variants[variantIndex]) {
+                price = item.variants[variantIndex].offer;
+                label = item.variants[variantIndex].label;
+            }
+
+            const cartId = `${id}-${label}`; 
+            const exists = cart.find(c => c.cartId === cartId);
+            
+            if(exists) {
+                exists.qty++;
+                showToast(`${item.name} (${label}) updated`);
+            } else {
+                cart.push({ ...item, cartId: cartId, qty: 1, offer: price, selectedLabel: label });
+                showToast(`Added ${item.name} (${label}) to cart!`);
+            }
+            
+            const btn = document.getElementById('cart-btn');
+            if(btn) { btn.classList.add('cart-animate'); setTimeout(() => btn.classList.remove('cart-animate'), 300); }
+            const mobileBtn = document.getElementById('mobile-cart-btn');
+            if(mobileBtn) { mobileBtn.classList.add('cart-animate'); setTimeout(() => mobileBtn.classList.remove('cart-animate'), 300); }
+            
+            updateUI();
+        }
+
+        function applyCoupon() {
+            const code = document.getElementById('coupon-input').value.trim().toUpperCase();
+            const status = document.getElementById('coupon-status');
+            
+            if (VALID_COUPONS[code]) {
+                appliedCoupon = { code: code, discount: VALID_COUPONS[code] };
+                status.innerText = `Success: ${code} applied (${appliedCoupon.discount * 100}% OFF)`;
+                status.className = "text-[10px] mt-1 font-medium text-emerald-600";
+                showToast("Coupon Applied!");
+            } else {
+                appliedCoupon = { code: "", discount: 0 };
+                status.innerText = "Invalid Coupon Code";
+                status.className = "text-[10px] mt-1 font-medium text-rose-500";
+            }
+            updateUI();
+        }
+
+        function updateUI() {
+            localStorage.setItem('sarita_v12_cart', JSON.stringify(cart));
+
+            const totalItems = cart.reduce((a,b) => a + b.qty, 0);
+            
+            const cartCountDesktop = document.getElementById('cart-count');
+            if (cartCountDesktop) cartCountDesktop.innerText = totalItems;
+            
+            const cartCountMobile = document.getElementById('mobile-cart-count');
+            if (cartCountMobile) cartCountMobile.innerText = totalItems;
+            
+            const subtotal = cart.reduce((a,b) => a + (b.offer * b.qty), 0);
+            const discountAmount = Math.round(subtotal * appliedCoupon.discount);
+            const finalTotal = subtotal - discountAmount;
+
+            document.getElementById('subtotal').innerText = '₹' + subtotal;
+            document.getElementById('discount-amt').innerText = '- ₹' + discountAmount;
+            document.getElementById('total').innerText = '₹' + finalTotal;
+
+            document.getElementById('cart-items').innerHTML = cart.map(i => `
+                <div class="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border">
+                    <img src="${i.images[0]}" class="w-10 h-10 object-contain bg-white rounded">
+                    <div class="flex-1 font-bold text-xs text-gray-700">
+                        ${i.name} <span class="text-rose-500">(${i.selectedLabel})</span>
+                        <br><span class="text-emerald-700 font-bold">₹${i.offer} x ${i.qty}</span>
+                    </div>
+                    <button onclick="removeFromCart('${i.cartId}')" class="text-rose-400 p-2 w-8 h-8 flex items-center justify-center"><i class="fas fa-trash text-sm"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function removeFromCart(cartId) { cart = cart.filter(i => i.cartId !== cartId); updateUI(); }
+
+        function whatsapp() {
+            if(!cart.length) return alert("Empty Cart!");
+            const subtotal = cart.reduce((a,b) => a + (b.offer * b.qty), 0);
+            const disc = Math.round(subtotal * appliedCoupon.discount);
+            const total = subtotal - disc;
+
+            let msg = `*NEW ORDER - SARITA MEDICAL*%0A`;
+            cart.forEach(i => msg += `• ${i.name} (${i.selectedLabel}) x ${i.qty}%0A`);
+            msg += `%0A*Subtotal:* ₹${subtotal}`;
+            if(appliedCoupon.code) { msg += `%0A*Coupon:* ${appliedCoupon.code} (-₹${disc})`; }
+            msg += `%0A*TOTAL BILL: ₹${total}*`;
+            
+            window.open(`https://wa.me/${STORE_WA}?text=${encodeURIComponent(msg)}`);
+        }
+
+        function navigate(page) {
+            const main = document.getElementById('main-content');
+            window.scrollTo(0, 0);
+
+            if (page === 'home') {
+                main.innerHTML = `
+                    <div class="lg:hidden mb-6">
+                        <h3 class="text-xs font-black text-emerald-700 uppercase tracking-widest mb-3 px-1 flex items-center gap-2"><i class="fas fa-layer-group opacity-80"></i> Categories</h3>
+                        <nav id="mobile-side-nav" class="flex gap-2 overflow-x-auto pb-2 no-scrollbar"></nav>
+                    </div>
+                    <div id="grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+                    <div id="pagination-controls" class="flex justify-center items-center gap-4 mt-10 mb-4"></div>
+                `;
+                renderCategories();
+                render();
+            } else if (page === 'about') {
+                main.innerHTML = `
+                    <div class="bg-white p-8 rounded-2xl border shadow-sm">
+                        <h2 class="text-2xl font-black text-emerald-700 mb-6">About Sarita Medical Hall</h2>
+                        <p class="mb-4 text-gray-600 leading-relaxed">Founded in 1995, Sarita Medical Hall has been a cornerstone of the local community's healthcare needs. We started with a small shop and a big vision: to provide authentic medicines at affordable prices.</p>
+                        <p class="mb-6 text-gray-600 leading-relaxed">Today, we are proud to serve thousands of customers daily, maintaining the highest standards of safety and professional integrity. Our pharmacists are always ready to guide you.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-emerald-50 p-4 rounded-xl text-center"><i class="fas fa-certificate text-emerald-600 mb-2"></i><p class="text-xs font-bold">100% Genuine</p></div>
+                            <div class="bg-emerald-50 p-4 rounded-xl text-center"><i class="fas fa-user-md text-emerald-600 mb-2"></i><p class="text-xs font-bold">Licensed Pros</p></div>
+                            <div class="bg-emerald-50 p-4 rounded-xl text-center"><i class="fas fa-snowflake text-emerald-600 mb-2"></i><p class="text-xs font-bold">Cold Storage</p></div>
+                        </div>
+                    </div>`;
+            } else if (page === 'contact') {
+                main.innerHTML = `
+                    <div class="bg-white p-8 rounded-2xl border shadow-sm">
+                        <h2 class="text-2xl font-black text-emerald-700 mb-2">Contact Us</h2>
+                        <p class="text-gray-500 mb-8">Get In Touch with our team</p>
+                        <div class="grid md:grid-cols-2 gap-8">
+                            <div class="space-y-6">
+                                <div><h4 class="font-bold text-gray-800">Address</h4><p class="text-sm text-gray-600">Main Market Road, Opp. Civil Hospital.</p></div>
+                                <div><h4 class="font-bold text-gray-800">Phone</h4><p class="text-sm text-gray-600">+91 8210616210</p></div>
+                                <div><h4 class="font-bold text-gray-800">Email</h4><p class="text-sm text-gray-600">info@saritamedical.com</p></div>
+                            </div>
+                            <div class="space-y-4">
+                                <h4 class="font-bold">Send us a Message</h4>
+                                <input type="text" placeholder="Name" class="w-full p-3 bg-gray-50 border rounded-lg outline-none">
+                                <textarea placeholder="How can we help?" class="w-full p-3 bg-gray-50 border rounded-lg h-24 outline-none"></textarea>
+                                <button class="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg">Submit Message</button>
+                            </div>
+                        </div>
+                    </div>`;
+            } else if (page === 'support') {
+                main.innerHTML = `
+                    <div class="bg-white p-8 rounded-2xl border shadow-sm">
+                        <h2 class="text-2xl font-black text-emerald-700 mb-2">Support Center</h2>
+                        <p class="text-gray-500 mb-8">Facing issues with your order? Our support team is available from 9:00 AM to 9:00 PM every day.</p>
+                        <div class="grid grid-cols-1 gap-4">
+                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-emerald-50 cursor-pointer border border-transparent hover:border-emerald-200 transition">
+                                <div class="flex items-center gap-4"><i class="fas fa-truck text-emerald-600"></i><span class="font-bold">Order Tracking</span></div>
+                                <i class="fas fa-chevron-right text-gray-300"></i>
+                            </div>
+                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-emerald-50 cursor-pointer border border-transparent hover:border-emerald-200 transition">
+                                <div class="flex items-center gap-4"><i class="fas fa-undo text-emerald-600"></i><span class="font-bold">Returns & Refunds</span></div>
+                                <i class="fas fa-chevron-right text-gray-300"></i>
+                            </div>
+                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-emerald-50 cursor-pointer border border-transparent hover:border-emerald-200 transition">
+                                <div class="flex items-center gap-4"><i class="fas fa-question-circle text-emerald-600"></i><span class="font-bold">FAQs</span></div>
+                                <i class="fas fa-chevron-right text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+        }
+
+        function toggleCart() { document.getElementById('cart-modal').classList.toggle('hidden'); }
+
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('product-modal').classList.contains('hidden')) return;
+            if (e.key === 'ArrowRight') nextImg();
+            if (e.key === 'ArrowLeft') prevImg();
+            if (e.key === 'Escape') closeModal();
+        });
+
+       // (function(){
+//     document.addEventListener('contextmenu',e=>e.preventDefault());
+//     document.onkeydown=function(e){
+//         if(e.keyCode==123||(e.ctrlKey&&e.shiftKey&&(e.keyCode==73||e.keyCode==74||e.keyCode==67))||(e.ctrlKey&&e.keyCode==85)) return false;
+//     };
+// })();
+
+        init();
+    </script>
+</body>
+</html>
