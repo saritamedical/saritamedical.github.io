@@ -180,7 +180,10 @@
             </div>
             <div class="w-full md:w-1/2 p-8 flex flex-col">
                 <div class="flex justify-between items-start pr-8">
-                    <span id="modal-cat" class="text-emerald-600 font-bold text-xs uppercase tracking-widest"></span>
+                    <div>
+                        <span id="modal-brand" class="text-gray-500 font-bold text-[10px] uppercase tracking-widest block mb-1"></span>
+                        <span id="modal-cat" class="text-emerald-600 font-bold text-xs uppercase tracking-widest"></span>
+                    </div>
                     <button id="modal-share-btn" class="text-emerald-600 hover:text-emerald-800 flex items-center gap-1 text-xs font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
                         <i class="fas fa-share-alt"></i> SHARE
                     </button>
@@ -275,7 +278,6 @@
     </footer>
 
     <script>
-        // YOUR ID IS ALREADY HERE:
         const SPREADSHEET_ID = '1rHLXM1Ttfli9IWSfuQiURU_7yol6dM769ww17Pu2Zq8'; 
         
         const STORE_WA = "918210616210";
@@ -312,9 +314,8 @@
         `);
 
         let medicines = [];
-        let rawFetchData = ""; // Used for debugging if it fails
+        let rawFetchData = ""; 
 
-        // --- FULLY RE-WRITTEN SAFE PARSER ---
         async function fetchProductsFromSheet() {
             const grid = document.getElementById('grid');
             const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv`;
@@ -324,21 +325,18 @@
                 if (!response.ok) throw new Error("Network block or bad connection");
                 
                 const csvText = await response.text();
-                rawFetchData = csvText.substring(0, 150); // Save a preview just in case
+                rawFetchData = csvText.substring(0, 150); 
                 
                 if (csvText.toLowerCase().includes('html') || csvText.toLowerCase().includes('sign in')) {
                     throw new Error("Google Sheet is restricted.");
                 }
 
-                // Super-safe way to split rows (works on all mobile phones)
                 const rows = csvText.split(/\r?\n/).filter(row => row.trim() !== "");
                 medicines = [];
                 let idCounter = 1;
 
-                // Loop through rows, skipping the header (i=1)
                 for (let i = 1; i < rows.length; i++) {
                     
-                    // Super-safe way to split columns
                     const cols = [];
                     let curr = '', inQuotes = false;
                     for (let char of rows[i]) {
@@ -355,7 +353,13 @@
                         const mrp = parseFloat(cols[3]) || 0;
                         const offer = parseFloat(cols[4]) || 0;
                         const stock = parseInt(cols[5]) || 0;
-                        const imgUrl = (cols[6] && cols[6] !== "") ? cols[6] : DEFAULT_PLACEHOLDER_IMG;
+                        
+                        // NEW: COMMA IMAGE PARSING! Splits images by comma into an array.
+                        const imgRaw = cols[6] ? cols[6] : "";
+                        const imagesList = imgRaw ? imgRaw.split(',').map(s => s.trim()) : [DEFAULT_PLACEHOLDER_IMG];
+                        
+                        // NEW: BRAND NAME PARSING! Pulls brand from Column H (Index 7)
+                        const brand = cols[7] ? cols[7].trim() : "General Medicine";
 
                         if (name && offer) {
                             const existingProduct = medicines.find(m => m.name.toLowerCase() === name.toLowerCase());
@@ -369,7 +373,8 @@
                                     offer: offer, 
                                     cat: cat, 
                                     stock: stock,
-                                    images: [imgUrl],
+                                    images: imagesList,
+                                    brand: brand,
                                     variants: [{ label: label, mrp: mrp, offer: offer, stock: stock }]
                                 });
                             }
@@ -466,7 +471,6 @@
 
             const filtered = medicines.filter(m => (currentCat === 'All' || m.cat === currentCat) && m.name.toLowerCase().includes(query));
 
-            // THE NEW DEBUG MESSAGE: If it fails, it will show us the text it fetched!
             if (filtered.length === 0 && medicines.length === 0) {
                  grid.innerHTML = `
                  <div class="col-span-full p-8 text-center text-gray-500 font-bold border-2 border-gray-200 rounded-xl">
@@ -488,6 +492,7 @@
             const startIndex = (currentPage - 1) * itemsPerPage;
             const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
 
+            // NEW: Updated Product Card HTML with Brand Name and Available Badge!
             grid.innerHTML = paginated.map(m => {
                 const displayMRP = m.variants && m.variants.length > 0 ? m.variants[0].mrp : m.mrp;
                 const displayOffer = m.variants && m.variants.length > 0 ? m.variants[0].offer : m.offer;
@@ -498,14 +503,20 @@
                 
                 return `
                 <div class="product-card" onclick="openModal(${m.id})">
-                    <div class="h-44 p-4 flex items-center justify-center bg-white relative">
+                    <div class="h-44 p-4 flex items-center justify-center bg-white relative border-b border-gray-100">
                         <img src="${m.images[0]}" class="max-h-full object-contain">
                         ${discount > 0 ? `<span class="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md">${discount}% OFF</span>` : ''}
                         ${outOfStock ? `<div class="absolute inset-0 bg-white/60 flex items-center justify-center"><span class="bg-black text-white text-[10px] font-bold px-3 py-1 rounded">SOLD OUT</span></div>` : ''}
                     </div>
-                    <div class="p-4 flex-1 flex flex-col">
-                        <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">${m.cat}</span>
-                        <h4 class="font-bold text-sm text-gray-800 line-clamp-2 h-10 mb-2">${m.name}</h4>
+                    <div class="p-4 flex-1 flex flex-col bg-white">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">${m.brand}</span>
+                            <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">${m.cat}</span>
+                        </div>
+                        <h4 class="font-bold text-sm text-gray-900 line-clamp-2 h-10 mb-2">${m.name}</h4>
+                        
+                        ${!outOfStock ? `<div class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full text-[10px] font-bold w-max mb-3 border border-emerald-100">● Available</div>` : `<div class="bg-rose-50 text-rose-700 px-2 py-1 rounded-full text-[10px] font-bold w-max mb-3 border border-rose-100">● Out of Stock</div>`}
+
                         <div class="flex items-center justify-between mb-4 mt-auto">
                             <div>
                                 <span class="text-lg font-bold text-gray-900">₹${displayOffer}</span> 
@@ -513,7 +524,7 @@
                             </div>
                         </div>
                         <button onclick="event.stopPropagation(); openModal(${m.id})" 
-                                class="w-full ${outOfStock ? 'bg-gray-400' : 'bg-emerald-700 hover:bg-emerald-800'} text-white py-2 rounded-lg text-xs font-bold transition active:scale-95">
+                                class="w-full ${outOfStock ? 'bg-gray-400' : 'bg-emerald-600 hover:bg-emerald-700'} text-white py-2 rounded-lg text-xs font-bold transition active:scale-95 shadow-sm">
                             ${outOfStock ? 'OUT OF STOCK' : (m.variants && m.variants.length > 1 ? 'SELECT SIZE' : 'ADD TO CART')}
                         </button>
                     </div>
@@ -551,6 +562,8 @@
                 updateModalPrice();
             }
             
+            // NEW: Load the Brand into the modal!
+            document.getElementById('modal-brand').innerText = m.brand || 'General Medicine';
             document.getElementById('modal-name').innerText = m.name;
             document.getElementById('modal-cat').innerText = m.cat;
             
@@ -593,7 +606,7 @@
 
             const addBtn = document.getElementById('modal-add-btn');
             if(stock <= 0) {
-                addBtn.innerText = "OUT OF STOCK"; addBtn.disabled = true; addBtn.className = "bg-gray-400 text-white py-4 rounded-xl font-bold cursor-not-allowed";
+                addBtn.innerText = "OUT OF STOCK"; addBtn.disabled = true; addBtn.className = "bg-gray-400 text-white py-3 rounded-xl font-bold cursor-not-allowed";
             } else {
                 addBtn.innerText = "ADD TO CART"; addBtn.disabled = false; addBtn.className = "bg-emerald-700 text-white py-3 rounded-xl font-bold hover:bg-emerald-800 transition shadow-lg";
                 addBtn.onclick = () => { addToCart(currentModalProduct.id, activeVariantIndex); closeModal(); };
@@ -611,6 +624,7 @@
             const imgUrl = currentModalProduct.images[currentImgIndex];
             document.getElementById('modal-main-img').src = imgUrl;
             
+            // This is the magic part! Because we split the comma list above, this automatically creates multiple thumbnails!
             document.getElementById('modal-thumbs').innerHTML = currentModalProduct.images.map((img, idx) => `
                 <img src="${img}" onclick="event.stopPropagation(); setImg(${idx})" class="w-16 h-16 object-cover rounded-lg border-2 cursor-pointer hover:border-emerald-500 transition ${idx === currentImgIndex ? 'thumb-active' : ''}">
             `).join('');
@@ -811,10 +825,10 @@
         });
 
        // (function(){
-//     document.addEventListener('contextmenu',e=>e.preventDefault());
-//     document.onkeydown=function(e){
-//         if(e.keyCode==123||(e.ctrlKey&&e.shiftKey&&(e.keyCode==73||e.keyCode==74||e.keyCode==67))||(e.ctrlKey&&e.keyCode==85)) return false;
-//     };
+//      document.addEventListener('contextmenu',e=>e.preventDefault());
+//      document.onkeydown=function(e){
+//          if(e.keyCode==123||(e.ctrlKey&&e.shiftKey&&(e.keyCode==73||e.keyCode==74||e.keyCode==67))||(e.ctrlKey&&e.keyCode==85)) return false;
+//      };
 // })();
 
         init();
