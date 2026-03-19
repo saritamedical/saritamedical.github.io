@@ -348,7 +348,6 @@
                     }
                     cols.push(curr.trim());
                     
-                    // Maps exactly to: Name(0), Category(1), Size(2), MRP(3), Discount%(4), SalePrice(5), Stock(6), ImageURL(7), Brand(8), Desc(9)
                     if (cols.length >= 7) { 
                         const name = cols[0];
                         const cat = cols[1];
@@ -693,6 +692,19 @@
             updateUI();
         }
 
+        // --- NEW FUNCTION: Change Quantity in Cart ---
+        function changeQty(cartId, delta) {
+            const item = cart.find(i => i.cartId === cartId);
+            if (item) {
+                item.qty += delta;
+                if (item.qty <= 0) {
+                    removeFromCart(cartId);
+                } else {
+                    updateUI();
+                }
+            }
+        }
+
         function applyCoupon() {
             const code = document.getElementById('coupon-input').value.trim().toUpperCase();
             const status = document.getElementById('coupon-status');
@@ -729,33 +741,49 @@
             document.getElementById('discount-amt').innerText = '- ₹' + discountAmount;
             document.getElementById('total').innerText = '₹' + finalTotal;
 
+            // --- UPDATED: Added +/- Buttons inside the Cart Layout ---
             document.getElementById('cart-items').innerHTML = cart.map(i => `
                 <div class="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border">
-                    <img src="${i.images[0]}" class="w-10 h-10 object-contain bg-white rounded">
-                    <div class="flex-1 font-bold text-xs text-gray-700">
-                        ${i.name} <span class="text-rose-500">(${i.selectedLabel})</span>
-                        <br><span class="text-emerald-700 font-bold">₹${i.offer} x ${i.qty}</span>
+                    <img src="${i.images[0]}" class="w-12 h-12 object-contain bg-white rounded shadow-sm">
+                    <div class="flex-1">
+                        <div class="font-bold text-xs text-gray-800 line-clamp-1">${i.name} <span class="text-rose-500">(${i.selectedLabel})</span></div>
+                        <div class="text-emerald-700 font-bold text-sm mb-1">₹${i.offer}</div>
+                        <div class="flex items-center gap-3 bg-white border rounded-lg px-2 py-1 w-max shadow-sm">
+                            <button onclick="changeQty('${i.cartId}', -1)" class="text-gray-500 hover:text-rose-500 font-black px-2 text-sm">-</button>
+                            <span class="text-gray-800 text-xs w-4 text-center font-bold">${i.qty}</span>
+                            <button onclick="changeQty('${i.cartId}', 1)" class="text-gray-500 hover:text-emerald-500 font-black px-2 text-sm">+</button>
+                        </div>
                     </div>
-                    <button onclick="removeFromCart('${i.cartId}')" class="text-rose-400 p-2 w-8 h-8 flex items-center justify-center"><i class="fas fa-trash text-sm"></i></button>
+                    <button onclick="removeFromCart('${i.cartId}')" class="text-rose-400 p-2 w-8 h-8 flex items-center justify-center hover:bg-rose-50 rounded-full transition"><i class="fas fa-trash text-sm"></i></button>
                 </div>
             `).join('');
         }
 
         function removeFromCart(cartId) { cart = cart.filter(i => i.cartId !== cartId); updateUI(); }
 
+        // --- UPDATED: Professional Invoice Format for WhatsApp ---
         function whatsapp() {
             if(!cart.length) return alert("Empty Cart!");
             const subtotal = cart.reduce((a,b) => a + (b.offer * b.qty), 0);
             const disc = Math.round(subtotal * appliedCoupon.discount);
             const total = subtotal - disc;
 
-            let msg = `*NEW ORDER - SARITA MEDICAL*%0A`;
-            cart.forEach(i => msg += `• ${i.name} (${i.selectedLabel}) x ${i.qty}%0A`);
-            msg += `%0A*Subtotal:* ₹${subtotal}`;
-            if(appliedCoupon.code) { msg += `%0A*Coupon:* ${appliedCoupon.code} (-₹${disc})`; }
-            msg += `%0A*TOTAL BILL: ₹${total}*`;
+            let msg = `*🧾 SARITA MEDICAL HALL - ORDER INVOICE*%0A`;
+            msg += `------------------------------------------%0A`;
             
-            window.open(`https://wa.me/${STORE_WA}?text=${encodeURIComponent(msg)}`);
+            cart.forEach((i, index) => {
+                msg += `*${index + 1}. ${i.name}* (${i.selectedLabel})%0A`;
+                msg += `   ₹${i.offer} x ${i.qty} = *₹${i.offer * i.qty}*%0A`;
+            });
+            
+            msg += `------------------------------------------%0A`;
+            msg += `*Subtotal:* ₹${subtotal}%0A`;
+            if(appliedCoupon.code) { msg += `*Coupon (${appliedCoupon.code}):* -₹${disc}%0A`; }
+            msg += `*FINAL AMOUNT TO PAY: ₹${total}*%0A`;
+            msg += `------------------------------------------%0A`;
+            msg += `_Please confirm my order and provide payment details. My delivery address is..._`;
+            
+            window.open(`https://wa.me/${STORE_WA}?text=${msg}`);
         }
 
         function navigate(page) {
