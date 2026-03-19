@@ -199,7 +199,9 @@
                     <span id="modal-price" class="text-3xl font-bold text-gray-900"></span>
                     <span id="modal-mrp" class="text-lg text-gray-400 line-through"></span>
                 </div>
-                <p class="text-gray-500 text-sm mb-6 leading-relaxed">Genuine healthcare product. Please verify the strip/bottle packaging and expiry date before use. Store in a cool, dry place.</p>
+                
+                <p id="modal-desc" class="text-gray-500 text-sm mb-6 leading-relaxed"></p>
+                
                 <div class="grid grid-cols-2 gap-3 mt-auto">
                     <button id="modal-buy-btn" class="bg-white border-2 border-emerald-600 text-emerald-700 py-3 rounded-xl font-bold hover:bg-emerald-50 transition">BUY NOW</button>
                     <button id="modal-add-btn" class="bg-emerald-700 text-white py-3 rounded-xl font-bold hover:bg-emerald-800 transition shadow-lg">ADD TO CART</button>
@@ -354,17 +356,18 @@
                         const offer = parseFloat(cols[4]) || 0;
                         const stock = parseInt(cols[5]) || 0;
                         
-                        // NEW: COMMA IMAGE PARSING! Splits images by comma into an array.
                         const imgRaw = cols[6] ? cols[6] : "";
                         const imagesList = imgRaw ? imgRaw.split(',').map(s => s.trim()) : [DEFAULT_PLACEHOLDER_IMG];
-                        
-                        // NEW: BRAND NAME PARSING! Pulls brand from Column H (Index 7)
                         const brand = cols[7] ? cols[7].trim() : "General Medicine";
+                        
+                        // NEW: Pulls the description from Column I (Index 8)
+                        const desc = cols[8] ? cols[8].trim() : "Genuine healthcare product. Please verify the strip/bottle packaging and expiry date before use. Store in a cool, dry place.";
 
                         if (name && offer) {
                             const existingProduct = medicines.find(m => m.name.toLowerCase() === name.toLowerCase());
                             if (existingProduct) {
-                                existingProduct.variants.push({ label: label, mrp: mrp, offer: offer, stock: stock });
+                                // NEW: Saves the unique images for this specific size
+                                existingProduct.variants.push({ label: label, mrp: mrp, offer: offer, stock: stock, images: imagesList });
                             } else {
                                 medicines.push({
                                     id: idCounter++,
@@ -375,7 +378,8 @@
                                     stock: stock,
                                     images: imagesList,
                                     brand: brand,
-                                    variants: [{ label: label, mrp: mrp, offer: offer, stock: stock }]
+                                    desc: desc, // NEW: Saved to the product
+                                    variants: [{ label: label, mrp: mrp, offer: offer, stock: stock, images: imagesList }]
                                 });
                             }
                         }
@@ -391,14 +395,9 @@
 
         async function init() { 
             renderCategories(); 
-            
             const success = await fetchProductsFromSheet();
-            if (success) {
-                render(); 
-            }
-            
+            if (success) render(); 
             updateUI();
-
             const urlParams = new URLSearchParams(window.location.search);
             const itemId = urlParams.get('item');
             if(itemId) {
@@ -430,13 +429,11 @@
         function renderCategories() {
             const nav = document.getElementById('side-nav');
             const mobileNav = document.getElementById('mobile-side-nav');
-            
             const htmlContent = categoryData.map(c => `
                 <button onclick="setCat('${c.name}')" class="sidebar-link flex-shrink-0 flex items-center gap-3 px-4 py-2 md:py-3 rounded-full md:rounded-lg text-sm transition-all ${currentCat === c.name ? 'active bg-emerald-600 text-white border-emerald-600 shadow-md' : 'text-gray-600 bg-white border border-gray-200 md:border-transparent hover:bg-gray-100'}">
                     <i class="fas ${c.icon} w-4 md:w-5 text-center ${currentCat === c.name ? 'text-white' : 'text-gray-400'}"></i><span>${c.name}</span>
                 </button>
             `).join('');
-
             if(nav) nav.innerHTML = htmlContent;
             if(mobileNav) mobileNav.innerHTML = htmlContent;
         }
@@ -446,7 +443,6 @@
             sessionStorage.setItem('currentCat', cat);
             currentPage = 1; 
             sessionStorage.setItem('currentPage', currentPage);
-            
             if (!document.getElementById('grid')) { navigate('home'); } 
             else { renderCategories(); render(); }
         }
@@ -475,9 +471,6 @@
                  grid.innerHTML = `
                  <div class="col-span-full p-8 text-center text-gray-500 font-bold border-2 border-gray-200 rounded-xl">
                     <p class="mb-4">No products loaded.</p>
-                    <p class="text-xs font-normal text-rose-500 break-all bg-rose-50 p-2 rounded text-left">
-                        <b>Debug Info (Send to dev):</b><br>${rawFetchData || "Nothing fetched"}
-                    </p>
                  </div>`;
                  document.getElementById('pagination-controls').innerHTML = '';
                  return;
@@ -492,7 +485,6 @@
             const startIndex = (currentPage - 1) * itemsPerPage;
             const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
 
-            // NEW: Updated Product Card HTML with Brand Name and Available Badge!
             grid.innerHTML = paginated.map(m => {
                 const displayMRP = m.variants && m.variants.length > 0 ? m.variants[0].mrp : m.mrp;
                 const displayOffer = m.variants && m.variants.length > 0 ? m.variants[0].offer : m.offer;
@@ -562,10 +554,12 @@
                 updateModalPrice();
             }
             
-            // NEW: Load the Brand into the modal!
             document.getElementById('modal-brand').innerText = m.brand || 'General Medicine';
             document.getElementById('modal-name').innerText = m.name;
             document.getElementById('modal-cat').innerText = m.cat;
+            
+            // NEW: Applies the description to the modal window!
+            document.getElementById('modal-desc').innerText = m.desc;
             
             updateModalGallery(); 
             
@@ -584,7 +578,12 @@
             updateModalPrice();
         }
 
-        function selectVariant(idx) { activeVariantIndex = idx; renderVariantButtons(); }
+        function selectVariant(idx) { 
+            activeVariantIndex = idx; 
+            currentImgIndex = 0; // NEW: Resets to 1st image when size changes
+            renderVariantButtons(); 
+            updateModalGallery(); // NEW: Instantly swaps the image based on size
+        }
 
         function updateModalPrice() {
             if(!currentModalProduct) return;
@@ -621,17 +620,31 @@
 
         function updateModalGallery() {
             if(!currentModalProduct) return;
-            const imgUrl = currentModalProduct.images[currentImgIndex];
+            
+            // NEW: Safely get the images for the currently selected size
+            const variantImages = currentModalProduct.variants[activeVariantIndex].images;
+            if (currentImgIndex >= variantImages.length) currentImgIndex = 0;
+            
+            const imgUrl = variantImages[currentImgIndex];
             document.getElementById('modal-main-img').src = imgUrl;
             
-            // This is the magic part! Because we split the comma list above, this automatically creates multiple thumbnails!
-            document.getElementById('modal-thumbs').innerHTML = currentModalProduct.images.map((img, idx) => `
+            document.getElementById('modal-thumbs').innerHTML = variantImages.map((img, idx) => `
                 <img src="${img}" onclick="event.stopPropagation(); setImg(${idx})" class="w-16 h-16 object-cover rounded-lg border-2 cursor-pointer hover:border-emerald-500 transition ${idx === currentImgIndex ? 'thumb-active' : ''}">
             `).join('');
         }
 
-        function nextImg() { if(!currentModalProduct) return; currentImgIndex = (currentImgIndex + 1) % currentModalProduct.images.length; updateModalGallery(); }
-        function prevImg() { if(!currentModalProduct) return; currentImgIndex = (currentImgIndex - 1 + currentModalProduct.images.length) % currentModalProduct.images.length; updateModalGallery(); }
+        function nextImg() { 
+            if(!currentModalProduct) return; 
+            const variantImages = currentModalProduct.variants[activeVariantIndex].images;
+            currentImgIndex = (currentImgIndex + 1) % variantImages.length; 
+            updateModalGallery(); 
+        }
+        function prevImg() { 
+            if(!currentModalProduct) return; 
+            const variantImages = currentModalProduct.variants[activeVariantIndex].images;
+            currentImgIndex = (currentImgIndex - 1 + variantImages.length) % variantImages.length; 
+            updateModalGallery(); 
+        }
         function setImg(idx) { currentImgIndex = idx; updateModalGallery(); }
         
         function closeModal() { 
@@ -824,7 +837,7 @@
             if (e.key === 'Escape') closeModal();
         });
 
-       // (function(){
+        // (function(){
 //      document.addEventListener('contextmenu',e=>e.preventDefault());
 //      document.onkeydown=function(e){
 //          if(e.keyCode==123||(e.ctrlKey&&e.shiftKey&&(e.keyCode==73||e.keyCode==74||e.keyCode==67))||(e.ctrlKey&&e.keyCode==85)) return false;
