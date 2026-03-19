@@ -318,7 +318,6 @@
         let medicines = [];
         let rawFetchData = ""; 
 
-        // ----- ONLY THIS FUNCTION WAS MODIFIED -----
         async function fetchProductsFromSheet() {
             const grid = document.getElementById('grid');
             const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv`;
@@ -338,7 +337,6 @@
                 medicines = [];
                 let idCounter = 1;
 
-                // Loop starts at 1 to skip header row
                 for (let i = 1; i < rows.length; i++) {
                     
                     const cols = [];
@@ -351,14 +349,13 @@
                     cols.push(curr.trim());
                     
                     // Maps exactly to: Name(0), Category(1), Size(2), MRP(3), Discount%(4), SalePrice(5), Stock(6), ImageURL(7), Brand(8), Desc(9)
-                    if (cols.length >= 7) { // Need at least up to Stock to be valid
+                    if (cols.length >= 7) { 
                         const name = cols[0];
                         const cat = cols[1];
                         const label = cols[2] || "Standard";
                         const mrp = parseFloat(cols[3]) || 0;
                         
-                        // We skip cols[4] (Discount %) because we only need the final sale price
-                        const offer = parseFloat(cols[5]) || parseFloat(cols[3]) || 0; // If sale price empty, use MRP
+                        const offer = parseFloat(cols[5]) || parseFloat(cols[3]) || 0; 
                         
                         const stock = parseInt(cols[6]) || 0;
                         
@@ -396,7 +393,6 @@
                 return false; 
             }
         }
-        // ---------------------------------------------
 
         async function init() { 
             renderCategories(); 
