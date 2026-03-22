@@ -496,7 +496,7 @@
                 return `
                 <div class="product-card" onclick="openModal(${m.id})">
                     <div class="h-44 p-4 flex items-center justify-center bg-white relative border-b border-gray-100">
-                        <img src="${m.images[0]}" class="max-h-full object-contain">
+                        <img src="${m.images[0]}" class="max-h-full object-contain" loading="lazy" decoding="async">
                         ${discount > 0 ? `<span class="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md">${discount}% OFF</span>` : ''}
                         ${outOfStock ? `<div class="absolute inset-0 bg-white/60 flex items-center justify-center"><span class="bg-black text-white text-[10px] font-bold px-3 py-1 rounded">SOLD OUT</span></div>` : ''}
                     </div>
@@ -627,7 +627,7 @@
             document.getElementById('modal-main-img').src = imgUrl;
             
             document.getElementById('modal-thumbs').innerHTML = variantImages.map((img, idx) => `
-                <img src="${img}" onclick="event.stopPropagation(); setImg(${idx})" class="w-16 h-16 object-cover rounded-lg border-2 cursor-pointer hover:border-emerald-500 transition ${idx === currentImgIndex ? 'thumb-active' : ''}">
+                <img src="${img}" onclick="event.stopPropagation(); setImg(${idx})" class="w-16 h-16 object-cover rounded-lg border-2 cursor-pointer hover:border-emerald-500 transition ${idx === currentImgIndex ? 'thumb-active' : ''}" loading="lazy">
             `).join('');
         }
 
@@ -682,7 +682,6 @@
                 exists.qty++;
                 showToast(`${item.name} (${label}) updated`);
             } else {
-                // SAVING cartMrp to ensure coupon calculates off original MRP
                 cart.push({ ...item, cartId: cartId, qty: 1, offer: price, cartMrp: itemMrp, selectedLabel: label });
                 showToast(`Added ${item.name} (${label}) to cart!`);
             }
@@ -735,10 +734,8 @@
             const cartCountMobile = document.getElementById('mobile-cart-count');
             if (cartCountMobile) cartCountMobile.innerText = totalItems;
             
-            // Subtotal is based on the regular Store Sale Price
             const subtotal = cart.reduce((a,b) => a + (b.offer * b.qty), 0);
             
-            // Coupon is calculated on the original MRP
             const totalMrp = cart.reduce((a,b) => a + ((b.cartMrp || b.mrp || b.offer) * b.qty), 0);
             const discountAmount = Math.round(totalMrp * appliedCoupon.discount);
             
@@ -751,7 +748,7 @@
 
             document.getElementById('cart-items').innerHTML = cart.map(i => `
                 <div class="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border">
-                    <img src="${i.images[0]}" class="w-12 h-12 object-contain bg-white rounded shadow-sm">
+                    <img src="${i.images[0]}" class="w-12 h-12 object-contain bg-white rounded shadow-sm" loading="lazy">
                     <div class="flex-1">
                         <div class="font-bold text-xs text-gray-800 line-clamp-1">${i.name} <span class="text-rose-500">(${i.selectedLabel})</span></div>
                         <div class="text-emerald-700 font-bold text-sm mb-1">₹${i.offer}</div>
