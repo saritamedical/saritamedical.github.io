@@ -302,11 +302,11 @@
         const categoryData = [
             { name: 'All', icon: 'fa-border-all' },
             { name: 'Featured', icon: 'fa-star' },
-			{ name: 'Health Drinks', icon: 'fa-mug-hot' },
+            { name: 'Health Drinks', icon: 'fa-mug-hot' },
             { name: 'Vitamins', icon: 'fa-capsules' },
-			{ name: 'Baby Care', icon: 'fa-baby' },
-			{ name: 'Pain Relief', icon: 'fa-pills' },
-		    { name: 'First Aid', icon: 'fa-kit-medical' },
+            { name: 'Baby Care', icon: 'fa-baby' },
+            { name: 'Pain Relief', icon: 'fa-pills' },
+            { name: 'First Aid', icon: 'fa-kit-medical' },
             { name: 'Skincare', icon: 'fa-pump-medical' }
             
         ];
@@ -674,22 +674,35 @@
             let price = item.offer;
             let itemMrp = item.mrp;
             let label = "Standard";
-            let category = item.cat; // Need this for the coupon exclusion!
+            let category = item.cat; 
+            let maxStock = item.stock; // NEW: Grabs the available stock limit
 
             if (variantIndex !== null && item.variants && item.variants[variantIndex]) {
                 price = item.variants[variantIndex].offer;
                 itemMrp = item.variants[variantIndex].mrp;
                 label = item.variants[variantIndex].label;
+                maxStock = item.variants[variantIndex].stock; // NEW: Grabs variant stock limit
             }
 
             const cartId = `${id}-${label}`; 
             const exists = cart.find(c => c.cartId === cartId);
             
             if(exists) {
+                // NEW: Block adding more if stock limit is reached
+                if (exists.qty >= maxStock) {
+                    showToast(`Only ${maxStock} units available in stock!`);
+                    return; 
+                }
                 exists.qty++;
                 showToast(`${item.name} (${label}) updated`);
             } else {
-                cart.push({ ...item, cartId: cartId, qty: 1, offer: price, cartMrp: itemMrp, selectedLabel: label, cat: category });
+                // Extra safety net
+                if (maxStock < 1) { 
+                    showToast("Out of stock!"); 
+                    return; 
+                } 
+                // NEW: Saves the maxStock number into the cart memory
+                cart.push({ ...item, cartId: cartId, qty: 1, offer: price, cartMrp: itemMrp, selectedLabel: label, cat: category, maxStock: maxStock });
                 showToast(`Added ${item.name} (${label}) to cart!`);
             }
             
@@ -704,6 +717,12 @@
         function changeQty(cartId, delta) {
             const item = cart.find(i => i.cartId === cartId);
             if (item) {
+                // NEW: Block the '+' button if stock limit is reached
+                if (delta > 0 && item.qty >= (item.maxStock || 99)) {
+                    showToast(`Only ${item.maxStock} available!`);
+                    return;
+                }
+                
                 item.qty += delta;
                 if (item.qty <= 0) {
                     removeFromCart(cartId);
@@ -743,9 +762,8 @@
             
             const subtotal = cart.reduce((a,b) => a + (b.offer * b.qty), 0);
             
-            // UPDATED: Calculate coupon only on eligible items
             const eligibleMrp = cart.reduce((a,b) => {
-                if (NO_DISCOUNT_CATS.includes(b.cat)) return a; // Skip if it's a Health Drink
+                if (NO_DISCOUNT_CATS.includes(b.cat)) return a; 
                 return a + ((b.cartMrp || b.mrp || b.offer) * b.qty);
             }, 0);
 
@@ -782,7 +800,6 @@
             
             const subtotal = cart.reduce((a,b) => a + (b.offer * b.qty), 0);
             
-            // UPDATED: Must match the UI logic above!
             const eligibleMrp = cart.reduce((a,b) => {
                 if (NO_DISCOUNT_CATS.includes(b.cat)) return a;
                 return a + ((b.cartMrp || b.mrp || b.offer) * b.qty);
