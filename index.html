@@ -295,14 +295,20 @@
         let appliedCoupon = { code: "", discount: 0 }; 
         const VALID_COUPONS = { "HEALTH15": 0.15, "FIRST10": 0.10, "SARITA5": 0.05 };
 
+        // NEW: Array to tell the code which categories NOT to give coupon discounts to
+        const NO_DISCOUNT_CATS = ["Health Drinks"]; 
+
+        // UPDATED: Added "Health Drinks" to your category list
         const categoryData = [
             { name: 'All', icon: 'fa-border-all' },
             { name: 'Featured', icon: 'fa-star' },
-            { name: 'Pain Relief', icon: 'fa-pills' },
+			{ name: 'Health Drinks', icon: 'fa-mug-hot' },
             { name: 'Vitamins', icon: 'fa-capsules' },
-            { name: 'Baby Care', icon: 'fa-baby' },
-            { name: 'First Aid', icon: 'fa-kit-medical' },
+			{ name: 'Baby Care', icon: 'fa-baby' },
+			{ name: 'Pain Relief', icon: 'fa-pills' },
+		    { name: 'First Aid', icon: 'fa-kit-medical' },
             { name: 'Skincare', icon: 'fa-pump-medical' }
+            
         ];
 
         const DEFAULT_PLACEHOLDER_IMG = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
@@ -668,6 +674,7 @@
             let price = item.offer;
             let itemMrp = item.mrp;
             let label = "Standard";
+            let category = item.cat; // Need this for the coupon exclusion!
 
             if (variantIndex !== null && item.variants && item.variants[variantIndex]) {
                 price = item.variants[variantIndex].offer;
@@ -682,7 +689,7 @@
                 exists.qty++;
                 showToast(`${item.name} (${label}) updated`);
             } else {
-                cart.push({ ...item, cartId: cartId, qty: 1, offer: price, cartMrp: itemMrp, selectedLabel: label });
+                cart.push({ ...item, cartId: cartId, qty: 1, offer: price, cartMrp: itemMrp, selectedLabel: label, cat: category });
                 showToast(`Added ${item.name} (${label}) to cart!`);
             }
             
@@ -736,11 +743,16 @@
             
             const subtotal = cart.reduce((a,b) => a + (b.offer * b.qty), 0);
             
-            const totalMrp = cart.reduce((a,b) => a + ((b.cartMrp || b.mrp || b.offer) * b.qty), 0);
-            const discountAmount = Math.round(totalMrp * appliedCoupon.discount);
+            // UPDATED: Calculate coupon only on eligible items
+            const eligibleMrp = cart.reduce((a,b) => {
+                if (NO_DISCOUNT_CATS.includes(b.cat)) return a; // Skip if it's a Health Drink
+                return a + ((b.cartMrp || b.mrp || b.offer) * b.qty);
+            }, 0);
+
+            const discountAmount = Math.round(eligibleMrp * appliedCoupon.discount);
             
             let finalTotal = subtotal - discountAmount;
-            if (finalTotal < 0) finalTotal = 0; // Prevent negative bills
+            if (finalTotal < 0) finalTotal = 0; 
 
             document.getElementById('subtotal').innerText = '₹' + subtotal;
             document.getElementById('discount-amt').innerText = '- ₹' + discountAmount;
@@ -769,8 +781,15 @@
             if(!cart.length) return alert("Empty Cart!");
             
             const subtotal = cart.reduce((a,b) => a + (b.offer * b.qty), 0);
-            const totalMrp = cart.reduce((a,b) => a + ((b.cartMrp || b.mrp || b.offer) * b.qty), 0);
-            const disc = Math.round(totalMrp * appliedCoupon.discount);
+            
+            // UPDATED: Must match the UI logic above!
+            const eligibleMrp = cart.reduce((a,b) => {
+                if (NO_DISCOUNT_CATS.includes(b.cat)) return a;
+                return a + ((b.cartMrp || b.mrp || b.offer) * b.qty);
+            }, 0);
+            
+            const disc = Math.round(eligibleMrp * appliedCoupon.discount);
+            
             let total = subtotal - disc;
             if (total < 0) total = 0;
 
