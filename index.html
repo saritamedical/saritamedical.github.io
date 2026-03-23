@@ -308,7 +308,6 @@
             { name: 'Pain Relief', icon: 'fa-pills' },
             { name: 'First Aid', icon: 'fa-kit-medical' },
             { name: 'Skincare', icon: 'fa-pump-medical' }
-            
         ];
 
         const DEFAULT_PLACEHOLDER_IMG = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
@@ -469,6 +468,14 @@
                 currentPage = 1;
                 sessionStorage.setItem('currentPage', 1);
                 sessionStorage.setItem('lastQuery', query);
+                
+                // NEW SMART SEARCH FEATURE:
+                // Automatically switch to 'All' categories when typing a search so the whole store is searched
+                if (query.trim() !== '' && currentCat !== 'All') {
+                    currentCat = 'All';
+                    sessionStorage.setItem('currentCat', 'All');
+                    renderCategories(); // Updates the sidebar buttons so "All" turns green
+                }
             }
 
             const filtered = medicines.filter(m => (currentCat === 'All' || m.cat === currentCat) && m.name.toLowerCase().includes(query));
@@ -675,20 +682,19 @@
             let itemMrp = item.mrp;
             let label = "Standard";
             let category = item.cat; 
-            let maxStock = item.stock; // NEW: Grabs the available stock limit
+            let maxStock = item.stock; 
 
             if (variantIndex !== null && item.variants && item.variants[variantIndex]) {
                 price = item.variants[variantIndex].offer;
                 itemMrp = item.variants[variantIndex].mrp;
                 label = item.variants[variantIndex].label;
-                maxStock = item.variants[variantIndex].stock; // NEW: Grabs variant stock limit
+                maxStock = item.variants[variantIndex].stock; 
             }
 
             const cartId = `${id}-${label}`; 
             const exists = cart.find(c => c.cartId === cartId);
             
             if(exists) {
-                // NEW: Block adding more if stock limit is reached
                 if (exists.qty >= maxStock) {
                     showToast(`Only ${maxStock} units available in stock!`);
                     return; 
@@ -696,12 +702,10 @@
                 exists.qty++;
                 showToast(`${item.name} (${label}) updated`);
             } else {
-                // Extra safety net
                 if (maxStock < 1) { 
                     showToast("Out of stock!"); 
                     return; 
                 } 
-                // NEW: Saves the maxStock number into the cart memory
                 cart.push({ ...item, cartId: cartId, qty: 1, offer: price, cartMrp: itemMrp, selectedLabel: label, cat: category, maxStock: maxStock });
                 showToast(`Added ${item.name} (${label}) to cart!`);
             }
@@ -717,7 +721,6 @@
         function changeQty(cartId, delta) {
             const item = cart.find(i => i.cartId === cartId);
             if (item) {
-                // NEW: Block the '+' button if stock limit is reached
                 if (delta > 0 && item.qty >= (item.maxStock || 99)) {
                     showToast(`Only ${item.maxStock} available!`);
                     return;
